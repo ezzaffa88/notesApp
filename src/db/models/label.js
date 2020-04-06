@@ -12,6 +12,8 @@ const labelSchema = mongoose.Schema({
     },
     color:{
         type:String
-    }
+    },
+    
 })
 const label = mongoose.model('Label',labelSchema)
+module.exports = label
