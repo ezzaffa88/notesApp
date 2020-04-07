@@ -1,31 +1,45 @@
 const express = require("express")
 const taskRoute =  express.Router()
 const Task = require("../db/models/task")
+const User = require('../db/models/user')
+const auth =  require('../middlewares/auth')
 
-taskRoute.post('/new-todo/:id',async(req,res)=>{
+taskRoute.post('/new-todo',auth,async(req,res)=>{
     try{
-    const task = new Task({...req.body,owner:req.params.id})
+    const task = new Task({...req.body,owner:req.user.id})
     await task.save()
     res.status(201).send(task) 
     //console.log(new Date(),"inserted..")   
     }catch(err){
-        res.status(400).send({err})
+        res.status(400).send(err)
     }
 })
-taskRoute.get("/my-todos/:id",async(req,res)=>{
+taskRoute.get("/my-todos",auth,async(req,res)=>{
+    const filters = ['important','starred','completed']
+    const match = {}
+    filters.forEach((elem)=>{
+        if(req.query[elem]){
+            match[elem] = req.query[elem]
+        }
+    })
+    console.log(match)
+    const userId = req.user.id
     try{
-    const myTodos = await Task.find({owner:req.params.id})
-    
-    if(!myTodos){
-        return res.status(404).send({error:"no Tasks Yet"})
-    }
-    res.send(myTodos)
-
+     await User.findById(userId)
+    .populate({
+        path:'todos',
+        match
+    }).exec((err,result)=>{
+        if (err){
+            throw new error("no Tasks Yet")
+        }
+        return res.send(result.todos)
+    })    
     }catch(e){
         res.status(400).send
     }
 })
-taskRoute.delete("/my-todo/delete/:id",async(req,res)=>{
+taskRoute.delete("/my-todo/delete/:id",auth,async(req,res)=>{
     try{
         const todoToDelete =await Task.findByIdAndDelete(req.params.id)
         if(!todoToDelete){
@@ -37,7 +51,7 @@ taskRoute.delete("/my-todo/delete/:id",async(req,res)=>{
         res.status(400).send
     }
 })
-taskRoute.patch("/my-todo/update/:id",async(req,res)=>{
+taskRoute.patch("/my-todo/update/:id",auth,async(req,res)=>{
 
   try {
     const updates = Object.keys(req.body)
